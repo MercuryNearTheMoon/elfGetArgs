@@ -2,35 +2,23 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
-)
 
-type Args struct {
-    Path    string
-    Arch    string
-    Funcs   []string
-    ArgNums []int
-    Out     string
-    Worker  int
-}
+	"github.com/spf13/pflag"
+)
 
 // ParseArgs parses CLI arguments
 func ParseArgs() (Args, error) {
     var a Args
-    funcs := multiFlag{}
-    args := multiIntFlag{}
 
-    flag.StringVar(&a.Path, "path", "", "Target directory or file to scan (required)")
-    flag.StringVar(&a.Arch, "arch", "", "Target architecture (amd64, arm64) (required)")
-    flag.Var(&funcs, "func", "Function name to search (can be repeated)")
-    flag.Var(&args, "arg", "Argument index for corresponding function (can be repeated)")
-    flag.StringVar(&a.Out, "out", "", "Output CSV file (optional)")
-    flag.IntVar(&a.Worker, "worker", 1, "Number of workers (optional, default 1)")
-    flag.Parse()
+    pflag.StringVarP(&a.Path, "path", "p", "", "Target directory or file to scan (required)")
+    pflag.StringVarP(&a.Arch, "arch", "A", "", "Target architecture (amd64, arm64) (required)")
+    pflag.StringArrayVarP(&a.Funcs, "func", "f", []string{}, "Function name to search (can repeat)")
+    pflag.IntSliceVarP(&a.ArgNums, "arg", "a", []int{}, "Argument index for corresponding function (can repeat)")
+    pflag.StringVarP(&a.Out, "out", "o", "", "Output CSV file (optional)")
+    pflag.IntVarP(&a.Worker, "worker", "w", 4, "Number of workers (optional, default 4)")
 
-    a.Funcs = funcs
-    a.ArgNums = args
+    pflag.Parse()
 
     if a.Path == "" || a.Arch == "" {
         return a, errors.New("path and arch are required")
