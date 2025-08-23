@@ -16,13 +16,10 @@ func main() {
 
 	printArgs(args)
 
-	scanTarget := make([]ScanTarget, len(args.Funcs))
-	for i := range args.Funcs {
-		scanTarget[i] = ScanTarget{
-			Funcs:   args.Funcs[i],
-			ArgNums: args.ArgNums[i],
-		}
-    }
+	scanTarget := ScanTarget{
+		Funcs: args.Funcs,
+		ArgNums: args.ArgNums,
+	}
 
 	fmt.Println(scanTarget)
 

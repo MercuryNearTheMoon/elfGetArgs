@@ -10,6 +10,6 @@ type Args struct {
 }
 
 type ScanTarget struct {
-	Funcs   string
-	ArgNums int
+	Funcs   []string
+	ArgNums []int
 }
