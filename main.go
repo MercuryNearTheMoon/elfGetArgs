@@ -24,4 +24,12 @@ func main() {
 
 	fmt.Println(scanTarget)
 
+	results := ScanELF(args.Path, scanTarget, args.Worker)
+
+	if args.Out == "" {
+		printFuncCalls(results)
+	} else {
+		csvOutput(args.Out, results)
+	}
+
 }

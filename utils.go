@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -67,5 +70,42 @@ func hasTextSection(filePath string) bool {
 func printFuncCalls(fs []funcCall) {
 	for _, f := range fs {
 		fmt.Printf("Caller: %s\tCallee: %s\tArgument:%s\tFilename:%s\tOffset:%s\n", f.caller, f.callee, f.argument, f.filename, f.offset)
+	}
+}
+
+func csvOutput(filename string, result []funcCall) {
+
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	if err := writer.Write([]string{
+		"No.",
+		"File",
+		"Address",
+		"Caller",
+		"Callee",
+		"Argument"}); err != nil {
+		log.Fatal(err)
+	}
+	var writeErr error
+	no := 1
+	for _, v := range result {
+		record := []string{
+			strconv.Itoa(no),
+			v.filename,
+			"0x" + v.offset,
+			v.caller,
+			v.callee,
+			v.argument}
+		writeErr = writer.Write(record)
+		no++
+		if writeErr != nil {
+			log.Fatal(writeErr)
+		}
 	}
 }
