@@ -11,20 +11,88 @@ import (
 	"sync"
 )
 
+type (
+	X64Extractor   struct{}
+	Arm64Extractor struct{}
+	AddrExtractor  interface {
+		Extract(lines []string, tarRegister string) (addrs []string, targetAddrs []int64)
+	}
+)
+
+func (x X64Extractor) Extract(lines []string, tarRegister string) ([]string, []int64) {
+	re := regexp.MustCompile(`#\s*([0-9a-fA-F]+)`)
+	var addrs []string
+	var targetAddrs []int64
+
+	for _, line := range lines {
+		if strings.Contains(line, "lea") && strings.Contains(line, tarRegister) {
+			match := re.FindStringSubmatch(line)
+			if len(match) < 2 {
+				continue
+			}
+			addrHex := match[1]
+			refAddr, err := strconv.ParseInt(addrHex, 16, 64)
+			if err != nil {
+				continue
+			}
+			addr := strings.TrimSpace(strings.Split(line, ":")[0])
+			addrs = append(addrs, addr)
+			targetAddrs = append(targetAddrs, refAddr)
+		}
+	}
+	return addrs, targetAddrs
+}
+
+func (a Arm64Extractor) Extract(lines []string, tarRegister string) ([]string, []int64) {
+	reBase := regexp.MustCompile(`adrp\s+\w+,\s+([0-9a-fA-F]+)`)
+	reOffset := regexp.MustCompile(`#([0-9a-fA-Fx]+)`)
+
+	var addrs []string
+	var targetAddrs []int64
+	var baseAddr int64
+	var addr string
+	foundBase := false
+
+	for _, line := range lines {
+		if !foundBase && strings.Contains(line, "adrp") && strings.Contains(line, tarRegister) {
+			match := reBase.FindStringSubmatch(line)
+			if len(match) < 2 {
+				continue
+			}
+			baseAddr, _ = strconv.ParseInt(match[1], 16, 64)
+			addr = strings.TrimSpace(strings.Split(line, ":")[0])
+			foundBase = true
+		} else if foundBase && strings.Contains(line, "add") && strings.Contains(line, tarRegister) {
+			match := reOffset.FindStringSubmatch(line)
+			if len(match) < 2 {
+				continue
+			}
+			offsetAddr, _ := strconv.ParseInt(match[1], 0, 64)
+			targetAddrs = append(targetAddrs, baseAddr+offsetAddr)
+			addrs = append(addrs, addr)
+			foundBase = false
+		}
+	}
+	return addrs, targetAddrs
+}
+
 func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 	functionNames := scanTarget.Funcs
 	registers, err := parseRegisters(scanTarget.ArgNums, scanTarget.Arch)
-	if err != nil {
-		fmt.Println(err)
+	if err != nil || len(functionNames) != len(registers) {
+		fmt.Println("Invalid input:", err)
 		return nil
 	}
-	if len(functionNames) != len(registers) {
-		fmt.Println("functionNames and registers must be the same length")
+	var extractor AddrExtractor
+	switch scanTarget.Arch {
+	case "arm64":
+		extractor = Arm64Extractor{}
+	case "amd64":
+		extractor = X64Extractor{}
+	default:
+		fmt.Printf("Unsupported Arch Type: %s", scanTarget.Arch)
 		return nil
 	}
-
-	var results []funcCall
-	re := regexp.MustCompile(`#\s*([0-9a-fA-F]+)`)
 
 	objFinder := NewObjdumpFinder("objdump", functionNames)
 	fnLinesMap, err := objFinder.FindFunctions(filePath)
@@ -33,41 +101,19 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 		return nil
 	}
 
+	var results []funcCall
+
 	for idx, funcName := range functionNames {
 		tarRegister := registers[idx]
 		lines := fnLinesMap[funcName]
 
-		var targetAddrs []int64
-		var addrs []string
-		found := false
-
-		for _, line := range lines {
-			if strings.Contains(line, "lea") && strings.Contains(line, tarRegister) {
-				match := re.FindStringSubmatch(line)
-				if len(match) < 2 {
-					continue
-				}
-
-				addrHex := match[1]
-				refAddr, err := strconv.ParseInt(addrHex, 16, 64)
-				if err != nil {
-					continue
-				}
-
-				addr := strings.TrimSpace(strings.Split(line, ":")[0])
-				addrs = append(addrs, addr)
-				targetAddrs = append(targetAddrs, refAddr)
-				found = true
-			}
-		}
-
-		if !found {
+		addrs, targetAddrs := extractor.Extract(lines, tarRegister)
+		if len(addrs) == 0 {
 			continue
 		}
 
 		strChan := make(chan []byte)
 		sf := NewStringFinder(targetAddrs)
-
 		go func(c chan []byte) {
 			if err := sf.FindStrings(filePath, c); err != nil {
 				fmt.Println("StringFinder Error:", err)
@@ -80,13 +126,12 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 		}
 
 		callerNames, _ := objFinder.FindFunctionsByAddrs(filePath, addrs)
-		tmpResults := make([]funcCall, 0, len(strSlice))
 		for i := 0; i < len(strSlice); i++ {
 			caller := ""
 			if i < len(callerNames) {
 				caller = callerNames[i]
 			}
-			tmpResults = append(tmpResults, funcCall{
+			results = append(results, funcCall{
 				caller:   caller,
 				callee:   funcName,
 				argument: string(strSlice[i]),
@@ -94,8 +139,6 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 				offset:   addrs[i],
 			})
 		}
-
-		results = append(results, tmpResults...)
 	}
 
 	return results
