@@ -17,8 +17,9 @@ func main() {
 	printArgs(args)
 
 	scanTarget := ScanTarget{
-		Funcs: args.Funcs,
+		Funcs:   args.Funcs,
 		ArgNums: args.ArgNums,
+		Arch:    args.Arch,
 	}
 
 	fmt.Println(scanTarget)

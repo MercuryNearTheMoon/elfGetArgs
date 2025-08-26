@@ -12,6 +12,7 @@ type Args struct {
 type ScanTarget struct {
 	Funcs   []string
 	ArgNums []int
+	Arch    string
 }
 
 type funcCall struct {
