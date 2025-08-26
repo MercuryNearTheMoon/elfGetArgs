@@ -22,16 +22,16 @@ func printArgs(args Args) {
 	fmt.Println("Worker :", args.Worker)
 }
 
-func parseRegisters(regIdx []int, arch string) ([]string, error) {
+func parseRegisters(regIdx []int, arch ArchType) ([]string, error) {
 	var (
 		targetRegs []string
 		results    []string
 	)
 
 	switch arch {
-	case "amd64":
+	case AMD64:
 		targetRegs = X86_64Registers
-	case "arm64":
+	case ARM64:
 		targetRegs = ARM64Registers
 	default:
 		return nil, fmt.Errorf("Unsupported Arch Type: %s", arch)

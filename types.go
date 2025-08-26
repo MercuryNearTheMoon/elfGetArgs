@@ -1,5 +1,12 @@
 package main
 
+type ArchType string
+
+const (
+	AMD64 ArchType = "amd64"
+	ARM64 ArchType = "arm64"
+)
+
 type Args struct {
 	Path    string
 	Arch    string
@@ -12,7 +19,7 @@ type Args struct {
 type ScanTarget struct {
 	Funcs   []string
 	ArgNums []int
-	Arch    string
+	Arch    ArchType
 }
 
 type funcCall struct {

@@ -85,9 +85,9 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 	}
 	var extractor AddrExtractor
 	switch scanTarget.Arch {
-	case "arm64":
+	case ARM64:
 		extractor = Arm64Extractor{}
-	case "amd64":
+	case AMD64:
 		extractor = X64Extractor{}
 	default:
 		fmt.Printf("Unsupported Arch Type: %s", scanTarget.Arch)
