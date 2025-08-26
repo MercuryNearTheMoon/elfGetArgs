@@ -13,3 +13,7 @@ type ScanTarget struct {
 	Funcs   []string
 	ArgNums []int
 }
+
+type funcCall struct {
+	caller, callee, argument, filename, offset string
+}
