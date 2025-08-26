@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -19,7 +20,7 @@ func main() {
 	scanTarget := ScanTarget{
 		Funcs:   args.Funcs,
 		ArgNums: args.ArgNums,
-		Arch:    ArchType(args.Arch),
+		Arch:    ArchType(strings.ToLower(args.Arch)),
 	}
 
 	fmt.Println(scanTarget)
