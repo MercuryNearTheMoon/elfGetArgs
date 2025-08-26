@@ -101,7 +101,35 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 	return results
 }
 
-func ScanELFFiles(targetPath string, tasks chan<- string, wg *sync.WaitGroup) {
+func ScanELF(targetPath string, scanTargets ScanTarget, workerNum int) []funcCall {
+	var (
+		allResults []funcCall
+		wg         sync.WaitGroup
+	)
+
+	filesCh := make(chan string, 100)
+	resultsCh := make(chan []funcCall, 100)
+
+	// Collector
+	collectorDone := make(chan struct{})
+	go func() {
+		for results := range resultsCh {
+			allResults = append(allResults, results...)
+		}
+		close(collectorDone)
+	}()
+
+	// Workers
+	for i := 0; i < workerNum; i++ {
+		go func() {
+			for path := range filesCh {
+				resultsCh <- scanFile(path, scanTargets)
+				fmt.Println("Scanned ELF:", path)
+				wg.Done()
+			}
+		}()
+	}
+
 	err := filepath.WalkDir(targetPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -110,7 +138,7 @@ func ScanELFFiles(targetPath string, tasks chan<- string, wg *sync.WaitGroup) {
 			return nil
 		}
 		if !isELF(path) {
-			return nil // skip non-ELF
+			return nil
 		}
 		if !hasTextSection(path) {
 			fmt.Printf("Skipped %s, .text section not found\n", path)
@@ -118,11 +146,19 @@ func ScanELFFiles(targetPath string, tasks chan<- string, wg *sync.WaitGroup) {
 		}
 
 		wg.Add(1)
-		tasks <- path
+		filesCh <- path
 		return nil
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	wg.Wait()
+	close(filesCh)
+	close(resultsCh)
+
+	// wait for collector end
+	<-collectorDone
+
+	return allResults
 }
