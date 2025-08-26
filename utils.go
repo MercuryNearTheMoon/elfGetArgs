@@ -63,3 +63,9 @@ func hasTextSection(filePath string) bool {
 	}
 	return strings.Contains(string(out), ".text")
 }
+
+func printFuncCalls(fs []funcCall) {
+	for _, f := range fs {
+		fmt.Printf("Caller: %s\tCallee: %s\tArgument:%s\tFilename:%s\tOffset:%s\n", f.caller, f.callee, f.argument, f.filename, f.offset)
+	}
+}
