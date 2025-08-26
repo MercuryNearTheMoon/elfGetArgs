@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
+	"log"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
@@ -95,4 +99,30 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 	}
 
 	return results
+}
+
+func ScanELFFiles(targetPath string, tasks chan<- string, wg *sync.WaitGroup) {
+	err := filepath.WalkDir(targetPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !isELF(path) {
+			return nil // skip non-ELF
+		}
+		if !hasTextSection(path) {
+			fmt.Printf("Skipped %s, .text section not found\n", path)
+			return nil
+		}
+
+		wg.Add(1)
+		tasks <- path
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }

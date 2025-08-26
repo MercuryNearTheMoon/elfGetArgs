@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
 
 var X86_64Registers = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 var ARM64Registers = []string{"x0", "x1", "x2", "x3", "x4", "x5"}
@@ -33,4 +38,28 @@ func parseRegisters(regIdx []int, arch string) ([]string, error) {
 		results = append(results, targetRegs[idx])
 	}
 	return results, nil
+}
+
+func isELF(filePath string) bool {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	buf := make([]byte, 4)
+	n, err := f.Read(buf)
+	if err != nil || n < 4 {
+		return false
+	}
+	return buf[0] == 0x7f && buf[1] == 'E' && buf[2] == 'L' && buf[3] == 'F'
+}
+
+func hasTextSection(filePath string) bool {
+	cmd := exec.Command("readelf", "-S", filePath)
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), ".text")
 }
