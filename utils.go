@@ -14,12 +14,68 @@ var X86_64Registers = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 var ARM64Registers = []string{"x0", "x1", "x2", "x3", "x4", "x5"}
 
 func printArgs(args Args) {
-	fmt.Println("Path   :", args.Path)
-	fmt.Println("Arch   :", args.Arch)
-	fmt.Println("Funcs  :", args.Funcs)
-	fmt.Println("Args   :", args.ArgNums)
-	fmt.Println("Output :", args.Out)
-	fmt.Println("Worker :", args.Worker)
+	type field struct {
+		key string
+		val interface{}
+	}
+
+	fields := []field{
+		{"Path", args.Path},
+		{"Arch", args.Arch},
+		{"Funcs", args.Funcs},
+		{"Output", args.Out},
+		{"Worker", args.Worker},
+	}
+
+	if argNames, err := parseRegisters(args.ArgNums, ArchType(args.Arch)); err == nil {
+		fields = append(fields[:3], append([]field{{"Regs", argNames}}, fields[3:]...)...)
+	}
+
+	maxKeyLen := 0
+	for _, f := range fields {
+		if len(f.key) > maxKeyLen {
+			maxKeyLen = len(f.key)
+		}
+	}
+
+	frameWidth := 50
+	fmt.Println("+" + strings.Repeat("-", frameWidth) + "+")
+
+	for _, f := range fields {
+		valStr := fmt.Sprintf("%v", f.val)
+		lines := splitString(valStr, frameWidth-maxKeyLen-4)
+		for i, line := range lines {
+			if i == 0 {
+				fmt.Printf("| %-*s: %-*s |\n", maxKeyLen, f.key, frameWidth-maxKeyLen-4, line)
+			} else {
+				fmt.Printf("| %-*s  %-*s |\n", maxKeyLen, "", frameWidth-maxKeyLen-4, line)
+			}
+		}
+	}
+
+	fmt.Println("+" + strings.Repeat("-", frameWidth) + "+")
+}
+
+func splitString(s string, width int) []string {
+	words := strings.Fields(s)
+	var lines []string
+	var current string
+
+	for _, w := range words {
+		if len(current)+len(w)+1 > width {
+			lines = append(lines, current)
+			current = w
+		} else {
+			if current != "" {
+				current += " "
+			}
+			current += w
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
 }
 
 func parseRegisters(regIdx []int, arch ArchType) ([]string, error) {

@@ -23,8 +23,6 @@ func main() {
 		Arch:    ArchType(strings.ToLower(args.Arch)),
 	}
 
-	fmt.Println(scanTarget)
-
 	resultsCh := make(chan []funcCall, 100)
 
 	go func() {
