@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -144,23 +143,12 @@ func scanFile(filePath string, scanTarget ScanTarget) []funcCall {
 	return results
 }
 
-func ScanELF(targetPath string, scanTargets ScanTarget, workerNum int) []funcCall {
+func ScanELF(targetPath string, scanTargets ScanTarget, workerNum int, resultsCh chan []funcCall) error {
 	var (
-		allResults []funcCall
-		wg         sync.WaitGroup
+		wg sync.WaitGroup
 	)
 
 	filesCh := make(chan string, 100)
-	resultsCh := make(chan []funcCall, 100)
-
-	// Collector
-	collectorDone := make(chan struct{})
-	go func() {
-		for results := range resultsCh {
-			allResults = append(allResults, results...)
-		}
-		close(collectorDone)
-	}()
 
 	// Workers
 	for i := 0; i < workerNum; i++ {
@@ -193,15 +181,12 @@ func ScanELF(targetPath string, scanTargets ScanTarget, workerNum int) []funcCal
 		return nil
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	wg.Wait()
 	close(filesCh)
+	wg.Wait()
 	close(resultsCh)
 
-	// wait for collector end
-	<-collectorDone
-
-	return allResults
+	return nil
 }

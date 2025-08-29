@@ -25,12 +25,19 @@ func main() {
 
 	fmt.Println(scanTarget)
 
-	results := ScanELF(args.Path, scanTarget, args.Worker)
+	resultsCh := make(chan []funcCall, 100)
 
-	if args.Out == "" {
-		printFuncCalls(results)
+	go func() {
+		if err := ScanELF(args.Path, scanTarget, args.Worker, resultsCh); err != nil {
+			fmt.Println(err)
+			close(resultsCh)
+			os.Exit(1)
+		}
+	}()
+
+	if args.Out != "" {
+		csvOutput(args.Out, resultsCh)
 	} else {
-		csvOutput(args.Out, results)
+		printFuncCalls(resultsCh)
 	}
-
 }

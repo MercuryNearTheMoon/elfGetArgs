@@ -67,19 +67,21 @@ func hasTextSection(filePath string) bool {
 	return strings.Contains(string(out), ".text")
 }
 
-func printFuncCalls(fs []funcCall) {
-	for _, f := range fs {
-		fmt.Printf("Caller: %s\tCallee: %s\tArgument:%s\tFilename:%s\tOffset:%s\n", f.caller, f.callee, f.argument, f.filename, f.offset)
+func printFuncCalls(fc chan []funcCall) {
+	for fs := range fc {
+		for _, f := range fs {
+			fmt.Printf("Caller: %s\tCallee: %s\tArgument:%s\tFilename:%s\tOffset:%s\n", f.caller, f.callee, f.argument, f.filename, f.offset)
+		}
 	}
 }
 
-func csvOutput(filename string, result []funcCall) {
-
+func csvOutput(filename string, resultsCh <-chan []funcCall) {
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer file.Close()
+
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
@@ -92,20 +94,24 @@ func csvOutput(filename string, result []funcCall) {
 		"Argument"}); err != nil {
 		log.Fatal(err)
 	}
-	var writeErr error
+
 	no := 1
-	for _, v := range result {
-		record := []string{
-			strconv.Itoa(no),
-			v.filename,
-			"0x" + v.offset,
-			v.caller,
-			v.callee,
-			v.argument}
-		writeErr = writer.Write(record)
-		no++
-		if writeErr != nil {
-			log.Fatal(writeErr)
+	for results := range resultsCh {
+		for _, v := range results {
+			record := []string{
+				strconv.Itoa(no),
+				v.filename,
+				"0x" + v.offset,
+				v.caller,
+				v.callee,
+				v.argument,
+			}
+			if err := writer.Write(record); err != nil {
+				log.Println("csv write error:", err)
+			}
+			no++
+
 		}
+		writer.Flush()
 	}
 }
