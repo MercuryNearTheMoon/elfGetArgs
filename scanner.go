@@ -23,7 +23,8 @@ func (x X64Extractor) Extract(lines []string, tarRegister string) ([]string, []i
 	var addrs []string
 	var targetAddrs []int64
 
-	for _, line := range lines {
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
 		if strings.Contains(line, "lea") && strings.Contains(line, tarRegister) {
 			match := re.FindStringSubmatch(line)
 			if len(match) < 2 {
