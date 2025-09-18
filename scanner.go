@@ -166,12 +166,16 @@ func ScanELF(targetPath string, scanTargets ScanTarget, workerNum int, resultsCh
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
+
+		if !d.Type().IsRegular() {
 			return nil
 		}
+
 		if !isELF(path) {
+			fmt.Printf("Skipped %s, not an elf\n", path)
 			return nil
 		}
+
 		if !hasTextSection(path) {
 			fmt.Printf("Skipped %s, .text section not found\n", path)
 			return nil
