@@ -10,4 +10,4 @@ RUN go mod download
 COPY *.go ./
 RUN go build .
 
-ENTRYPOINT ["/app/elfGetArg"]
+ENTRYPOINT ["/app/elfGetArgs"]

@@ -1,4 +1,4 @@
-module github.com/MercuryNearTheMoon/elfGetArg
+module github.com/MercuryNearTheMoon/elfGetArgs
 
 go 1.25.0
 
